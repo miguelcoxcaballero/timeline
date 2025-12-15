@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Línea del tiempo interactiva de España en el siglo XX: política, guerra, cultura y golpes de estado." />
+  <title>España S.XX — Timeline</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;600;700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root{
+      --bg: #07070a;
+      --panel: rgba(10, 10, 14, 0.78);
+      --stroke: rgba(255,255,255,0.10);
+      --stroke-2: rgba(255,255,255,0.16);
+      --text: #e5e7eb;
+
+      --axis-x: 50%;
+      --axis-w: 2px;
+
+      --split-gap: 42px; /* desktop */
+      --card-w: 420px;
+      --card-w-mobile: min(92vw, 560px);
+
+      --page-pad-top: 18px;
+
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.45);
+
+      --r: 16px;
+
+      --c-politics: #fbbf24;
+      --c-war: #ef4444;
+      --c-culture: #c084fc;
+      --c-coup: #ff2d2d;
+      --c-context: #22c55e;
+
+      --c-axis-rest: #475569;
+      --c-axis-primo: #52525b;
+      --c-axis-dictablanda: #71717a;
+      --c-axis-rep: #9333ea;
+      --c-axis-fran: #1f2937;
+      --c-axis-trans: #ea580c;
+      --c-axis-psoe: #dc2626;
+      --c-axis-pp: #2563eb;
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    html{ background: var(--bg); }
+
+    body{
+      margin: 0;
+      color: var(--text);
+      font-family: "DM Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow-x: hidden;
+      position: relative;
+      isolation: isolate;
+      background: var(--bg);
+    }
+
+    a, button, input{
+      -webkit-tap-highlight-color: transparent;
+    }
+    :focus-visible{
+      outline: 2px solid rgba(255,255,255,0.30);
+      outline-offset: 3px;
+      border-radius: 10px;
+    }
+
+    /* Background (stable: no mask-image / no weird blending glitches) */
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -2;
+      background:
+        radial-gradient(900px 560px at 12% 18%, rgba(192,132,252,0.10), transparent 62%),
+        radial-gradient(980px 620px at 88% 22%, rgba(251,191,36,0.09), transparent 64%),
+        radial-gradient(1200px 700px at 50% -10%, rgba(255,255,255,0.06), transparent 60%),
+        radial-gradient(900px 650px at 50% 95%, rgba(239,68,68,0.05), transparent 65%);
+      transform: translateZ(0);
+      will-change: transform;
+    }
+    body::after{
+      content:"";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background-image:
+        radial-gradient(900px 600px at 50% 25%, rgba(255,255,255,0.05), transparent 70%),
+        radial-gradient(900px 650px at 50% 110%, rgba(0,0,0,0.55), transparent 55%),
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: auto, auto, 54px 54px, 54px 54px;
+      background-position: center, center, center, center;
+      opacity: 0.60;
+      transform: translateZ(0);
+      will-change: transform;
+    }
+
+    /* Skip link */
+    .skip{
+      position: absolute;
+      left: -9999px;
+      top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.92);
+      z-index: 999;
+    }
+    .skip:focus{
+      left: 12px;
+    }
+
+    /* ===== Header ===== */
+    header.app-header{
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      padding: var(--page-pad-top) 16px 12px;
+      background: linear-gradient(to bottom, rgba(7,7,10,0.92), rgba(7,7,10,0.35) 70%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .header-shell{
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand{
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark{
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 30% 30%, rgba(251,191,36,0.35), transparent 55%),
+                 radial-gradient(circle at 70% 70%, rgba(192,132,252,0.32), transparent 55%),
+                 rgba(255,255,255,0.06);
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow-soft);
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+    }
+    .brand-mark svg{ opacity: .9; }
+
+    .brand-title{ min-width: 0; line-height: 1.1; }
+    .brand-title h1{
+      margin: 0;
+      font-family: "Cinzel", serif;
+      font-weight: 700;
+      letter-spacing: .10em;
+      font-size: 18px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brand-title p{
+      margin: 3px 0 0;
+      color: rgba(255,255,255,0.62);
+      font-size: 12px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toolbar{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip, .input, .stat{
+      background: rgba(10,10,14,0.72);
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      height: 36px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    .input{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      width: min(340px, 52vw);
+    }
+    .input.small{
+      width: 150px;
+      padding: 0 10px;
+    }
+    .input input{
+      width: 100%;
+      background: transparent;
+      border: 0;
+      color: var(--text);
+      outline: none;
+      font-size: 13px;
+    }
+    .input input::placeholder{ color: rgba(255,255,255,0.46); }
+    .input svg{ opacity: .7; }
+
+    .chip{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.78);
+      cursor: pointer;
+      user-select: none;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+    .chip:hover{ transform: translateY(-1px); border-color: var(--stroke-2); }
+    .chip[aria-pressed="true"]{
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.22);
+      color: rgba(255,255,255,0.92);
+      box-shadow: 0 12px 34px rgba(0,0,0,0.45);
+    }
+    .chip .dot{
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
+    }
+    .chip.ghost{
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.10);
+    }
+
+    .stat{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+    .stat strong{
+      font-weight: 800;
+      letter-spacing: .06em;
+      color: rgba(255,255,255,0.92);
+    }
+
+    /* Sticky year badge */
+    .year-sticky{
+      position: fixed;
+      top: calc(var(--page-pad-top) + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 210;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    .year-sticky .badge{
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.54);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+      display: inline-flex;
+      align-items: baseline;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .year-sticky .badge::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(420px 80px at 50% 0%, rgba(255,255,255,0.10), transparent 60%);
+      pointer-events:none;
+    }
+    .year-sticky .badge .big{
+      font-family: "Cinzel", serif;
+      font-weight: 700;
+      letter-spacing: .14em;
+      font-size: 14px;
+      color: rgba(255,255,255,0.94);
+      position: relative;
+    }
+    .year-sticky .badge .small{
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      position: relative;
+    }
+    .year-sticky .badge .era{
+      font-size: 12px;
+      color: rgba(255,255,255,0.70);
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .year-sticky .badge .era .edot{
+      width: 8px; height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.25);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
+    }
+
+    /* Scroll progress */
+    .scroll-progress{
+      position: fixed;
+      right: 14px;
+      top: 96px;
+      bottom: 18px;
+      width: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      z-index: 190;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+    }
+    .scroll-progress .bar{
+      width: 100%;
+      height: 0%;
+      border-radius: 999px;
+      background: linear-gradient(to bottom, rgba(251,191,36,0.95), rgba(192,132,252,0.95), rgba(239,68,68,0.95));
+    }
+
+    /* ===== Main / Timeline ===== */
+    main{
+      position: relative;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 16px 220px;
+    }
+
+    .timeline{
+      position: relative;
+      width: 100%;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: radial-gradient(1000px 600px at 50% 0%, rgba(255,255,255,0.05), transparent 60%),
+                 rgba(0,0,0,0.16);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+      overflow: clip;
+      padding: 26px 0 60px;
+    }
+
+    .axis{
+      position: absolute;
+      top: 0;
+      left: var(--axis-x);
+      width: var(--axis-w);
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.10);
+      z-index: 10;
+    }
+    .axis.intro{
+      background: linear-gradient(to bottom, rgba(255,255,255,0.00), rgba(255,255,255,0.16));
+    }
+    .axis.split-left, .axis.split-right{
+      width: 3px;
+      z-index: 12;
+    }
+    .axis.split-left{
+      left: calc(var(--axis-x) - var(--split-gap));
+      background: linear-gradient(to bottom, rgba(127,29,29,1), rgba(239,68,68,1));
+    }
+    .axis.split-right{
+      left: calc(var(--axis-x) + var(--split-gap));
+      background: linear-gradient(to bottom, rgba(23,37,84,1), rgba(59,130,246,1));
+    }
+
+    .decade{
+      position: absolute;
+      left: 0; right: 0;
+      height: 0;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .decade::before{
+      content:"";
+      position: absolute;
+      left: 0; right: 0;
+      top: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.18), transparent);
+    }
+    .decade .label{
+      position: absolute;
+      left: 50%;
+      top: -14px;
+      transform: translateX(-50%);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-family: "Cinzel", serif;
+      font-weight: 700;
+      letter-spacing: .22em;
+      font-size: 12px;
+      color: rgba(255,255,255,0.86);
+      background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .year-bg{
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: "Cinzel", serif;
+      font-size: clamp(64px, 9vw, 128px);
+      letter-spacing: .08em;
+      color: rgba(255,255,255,0.03);
+      pointer-events: none;
+      z-index: 1;
+      transition: color .35s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .year-bg.active{ color: rgba(255,255,255,0.09); }
+
+    svg.connectors{
+      position: absolute;
+      inset: 0;
+      z-index: 14;
+      pointer-events: none;
+    }
+    .conn-path{
+      fill: none;
+      stroke: rgba(255,255,255,0.20);
+      stroke-width: 1.35;
+      stroke-linecap: round;
+    }
+
+    .node{
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: rgba(7,7,10,0.85);
+      border: 3px solid rgba(255,255,255,0.9);
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.55);
+      transition: transform .20s ease, box-shadow .20s ease;
+    }
+    .node:hover{ transform: translate(-50%, -50%) scale(1.22); }
+
+    .node.center{ left: var(--axis-x); }
+    .node.split-l{ left: calc(var(--axis-x) - var(--split-gap)); }
+    .node.split-r{ left: calc(var(--axis-x) + var(--split-gap)); }
+
+    .node.type-war{ border-color: var(--c-war); box-shadow: 0 0 0 4px rgba(0,0,0,0.55), 0 0 16px rgba(239,68,68,0.35); }
+    .node.type-politics{ border-color: var(--c-politics); box-shadow: 0 0 0 4px rgba(0,0,0,0.55), 0 0 16px rgba(251,191,36,0.28); }
+    .node.type-culture{ border-color: var(--c-culture); box-shadow: 0 0 0 4px rgba(0,0,0,0.55), 0 0 16px rgba(192,132,252,0.30); }
+    .node.type-coup{ border-color: var(--c-coup); box-shadow: 0 0 0 4px rgba(0,0,0,0.55), 0 0 18px rgba(255,45,45,0.35); }
+    .node.type-context{ border-color: var(--c-context); box-shadow: 0 0 0 4px rgba(0,0,0,0.55), 0 0 14px rgba(34,197,94,0.22); width: 14px; height: 14px; border-width: 3px; }
+
+    /* Cards */
+    .card{
+      position: absolute;
+      width: var(--card-w);
+      padding: 16px 18px 16px;
+      border-radius: var(--r);
+      background: linear-gradient(180deg, rgba(18,18,24,0.88), rgba(10,10,14,0.92));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      z-index: 22;
+
+      opacity: 0;
+      filter: blur(10px);
+      transition: opacity .55s cubic-bezier(.2,.9,.2,1), filter .55s cubic-bezier(.2,.9,.2,1), transform .15s ease;
+      will-change: opacity, filter;
+    }
+    .card.visible{
+      opacity: 1;
+      filter: blur(0);
+    }
+    .card:hover{ z-index: 50; transform: translateY(-1px); }
+
+    .card.left{
+      right: var(--axis-x);
+      margin-right: 86px;
+      text-align: right;
+    }
+    .card.right{
+      left: var(--axis-x);
+      margin-left: 86px;
+      text-align: left;
+    }
+
+    /* center class kept for compatibility (not used for 1936 coup anymore) */
+    .card.center{
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0 !important;
+      text-align: center;
+      border-color: rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(25,25,34,0.88), rgba(10,10,14,0.92));
+      width: min(520px, 70vw);
+    }
+
+    .card[data-auto="1"]{
+      padding: 12px 14px;
+      border-style: dashed;
+      border-color: rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(16,16,22,0.78), rgba(10,10,14,0.90));
+      box-shadow: 0 14px 46px rgba(0,0,0,.46);
+    }
+
+    .meta{
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 8px;
+    }
+    .pill{
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: .14em;
+      font-size: 11px;
+      color: rgba(255,255,255,0.75);
+      white-space: nowrap;
+    }
+    .pill .dot{ width: 8px; height: 8px; border-radius: 50%; }
+    .pill.subtle{
+      opacity: .65;
+    }
+
+    .card h3{
+      margin: 0 0 8px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      font-size: 18px;
+      color: rgba(255,255,255,0.95);
+    }
+    .card[data-auto="1"] h3{
+      font-size: 15px;
+      letter-spacing: 0.02em;
+    }
+    .card p{
+      margin: 0;
+      color: rgba(255,255,255,0.70);
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-weight: 400;
+    }
+    .card[data-auto="1"] p{
+      font-size: 12.5px;
+      color: rgba(255,255,255,0.62);
+    }
+
+    .is-hidden{ display: none !important; }
+
+    @media (max-width: 860px){
+      :root{ --split-gap: 22px; --card-w: 420px; }
+      .scroll-progress{ display: none; }
+    }
+
+    @media (max-width: 767px){
+      header.app-header{ padding-top: 14px; }
+      .header-shell{ grid-template-columns: 1fr; }
+      .toolbar{ justify-content: flex-start; }
+      .input{ width: 100%; }
+      .input.small{ width: 100%; }
+
+      main{ padding: 6px 12px 200px; }
+
+      .card{
+        width: var(--card-w-mobile);
+        left: 50% !important;
+        right: auto !important;
+        margin: 0 !important;
+        text-align: left;
+        transform: translateX(-50%);
+      }
+      .card.center{
+        width: var(--card-w-mobile);
+      }
+      svg.connectors{ display:none; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .card, .node, .chip { transition: none !important; }
+      .card { opacity: 1 !important; filter: none !important; }
+    }
+
+    .legend{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 180;
+      background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: rgba(255,255,255,0.72);
+      font-size: 12px;
+      flex-wrap: wrap;
+      max-width: min(92vw, 520px);
+    }
+    .legend .item{ display:flex; align-items:center; gap:8px; white-space: nowrap; }
+    .legend .dot{ width:10px; height:10px; border-radius:50%; box-shadow: 0 0 0 3px rgba(0,0,0,0.35); }
+    @media (max-width: 767px){
+      .legend{ left: 12px; right: 12px; justify-content: space-between; }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip" href="#main">Saltar a la línea del tiempo</a>
+
+  <div class="scroll-progress" aria-hidden="true">
+    <div class="bar" id="progressBar"></div>
+  </div>
+
+  <div class="year-sticky" aria-hidden="true">
+    <div class="badge">
+      <span class="big" id="stickyYear">1900</span>
+      <span class="small" id="stickyDecade">1900–1909</span>
+      <span class="era"><span class="edot" id="stickyEraDot"></span><span id="stickyEra">Restauración</span></span>
+    </div>
+  </div>
+
+  <header class="app-header" role="banner">
+    <div class="header-shell">
+      <div class="brand" aria-label="Título">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v18" stroke="rgba(255,255,255,0.8)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 8l5-5 5 5" stroke="rgba(255,255,255,0.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 16l5 5 5-5" stroke="rgba(255,255,255,0.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <h1>ESPAÑA S. XX</h1>
+          <p>Timeline interactivo</p>
+        </div>
+      </div>
+
+      <nav class="toolbar" aria-label="Filtros y búsqueda">
+        <label class="input" aria-label="Buscar eventos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="rgba(255,255,255,0.75)" stroke-width="2"/>
+            <path d="M16.5 16.5 21 21" stroke="rgba(255,255,255,0.75)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="search" type="search" placeholder="Buscar (ej. Constitución, Franco, Europa…)" autocomplete="off" />
+        </label>
+
+        <label class="input small" aria-label="Ir al año">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 3v4M17 3v4" stroke="rgba(255,255,255,0.70)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 9h16" stroke="rgba(255,255,255,0.55)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 6h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" stroke="rgba(255,255,255,0.70)" stroke-width="2" />
+          </svg>
+          <input id="jumpYear" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Año" aria-label="Escribe un año (1900–2000)" />
+        </label>
+
+        <button class="chip" type="button" id="chip-politics" aria-pressed="true" data-type="politics">
+          <span class="dot" style="background: var(--c-politics)"></span> Política
+        </button>
+        <button class="chip" type="button" id="chip-war" aria-pressed="true" data-type="war">
+          <span class="dot" style="background: var(--c-war)"></span> Guerra
+        </button>
+        <button class="chip" type="button" id="chip-culture" aria-pressed="true" data-type="culture">
+          <span class="dot" style="background: var(--c-culture)"></span> Cultura
+        </button>
+        <button class="chip" type="button" id="chip-coup" aria-pressed="true" data-type="coup">
+          <span class="dot" style="background: var(--c-coup)"></span> Golpes
+        </button>
+        <button class="chip" type="button" id="chip-context" aria-pressed="true" data-type="context" title="Marcadores anuales para garantizar al menos 1 evento por año">
+          <span class="dot" style="background: var(--c-context)"></span> Contexto
+        </button>
+
+        <button class="chip" type="button" id="chip-compact" aria-pressed="true" title="Compacta la línea del tiempo (eventos más juntos)">
+          Compacto
+        </button>
+
+        <button class="chip ghost" type="button" id="btn-reset" title="Restablece búsqueda y filtros">
+          Reset
+        </button>
+
+        <div class="stat" id="stats" aria-label="Recuento de eventos visibles">
+          <span>Eventos</span>
+          <strong id="statsCount">0</strong>
+          <span style="opacity:.7">/</span>
+          <span id="statsTotal">0</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" role="main">
+    <section class="timeline" aria-label="Línea del tiempo del siglo XX en España">
+      <div id="timeline-wrapper" class="timeline-inner" aria-live="polite"></div>
+      <noscript>
+        <div style="padding: 18px; color: rgba(255,255,255,0.8);">
+          Esta línea del tiempo necesita JavaScript para mostrarse.
+        </div>
+      </noscript>
+    </section>
+  </main>
+
+  <aside class="legend" aria-label="Leyenda">
+    <div class="item"><span class="dot" style="background: var(--c-politics)"></span> Política</div>
+    <div class="item"><span class="dot" style="background: var(--c-war)"></span> Guerra</div>
+    <div class="item"><span class="dot" style="background: var(--c-culture)"></span> Cultura</div>
+    <div class="item"><span class="dot" style="background: var(--c-coup)"></span> Golpes</div>
+    <div class="item"><span class="dot" style="background: var(--c-context)"></span> Contexto</div>
+  </aside>
+
+  <script>
+    const CONFIG = {
+      startYear: 1900,
+      endYear: 2000,
+      pxPerYearCompact: 110,
+      pxPerYearRelaxed: 150,
+      startOffset: 240,
+      paddingBottom: 520,
+      minGapDesktop: 16,
+      minGapMobile: 18,
+      curve: 0.22,
+    };
+
+    function getCSS(varName){
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    const TYPE_META = {
+      politics: { label: "Política", color: getCSS("--c-politics") },
+      war:      { label: "Guerra",   color: getCSS("--c-war") },
+      culture:  { label: "Cultura",  color: getCSS("--c-culture") },
+      coup:     { label: "Golpe",    color: getCSS("--c-coup") },
+      context:  { label: "Contexto", color: getCSS("--c-context") },
+    };
+
+    function parseDateUTC(dateStr){
+      return new Date(dateStr + "T00:00:00Z");
+    }
+
+    const periods = [
+      { start: "1900-01-01", end: "1923-09-13", color: getCSS("--c-axis-rest"),       label: "Restauración" },
+      { start: "1923-09-13", end: "1930-01-28", color: getCSS("--c-axis-primo"),      label: "Primo de Rivera" },
+      { start: "1930-01-28", end: "1931-04-14", color: getCSS("--c-axis-dictablanda"),label: "Dictablanda" },
+      { start: "1931-04-14", end: "1936-07-17", color: getCSS("--c-axis-rep"),        label: "II República" },
+      { start: "1936-07-18", end: "1939-04-01", type: "split",                        label: "Guerra Civil" },
+      { start: "1939-04-01", end: "1975-11-20", color: getCSS("--c-axis-fran"),       label: "Franquismo" },
+      { start: "1975-11-20", end: "1982-10-28", color: getCSS("--c-axis-trans"),      label: "Transición" },
+      { start: "1982-10-28", end: "1996-03-03", color: getCSS("--c-axis-psoe"),       label: "PSOE" },
+      { start: "1996-03-03", end: "2000-12-31", color: getCSS("--c-axis-pp"),         label: "PP" },
+    ];
+
+    let events = [
+      ["1900-01-01", "Ley de Accidentes de Trabajo", "politics", "Primer gran antecedente de protección social."],
+      ["1902-05-17", "Reinado efectivo de Alfonso XIII", "politics", "Comienza la etapa constitucional con el monarca en pleno ejercicio."],
+      ["1909-07-26", "Semana Trágica", "war", "Insurrección y conflicto social en Barcelona en el contexto de la guerra de Marruecos."],
+      ["1912-11-12", "Asesinato de Canalejas", "coup", "Magnicidio en la Puerta del Sol; gran impacto político."],
+      ["1917-08-13", "Huelga general de 1917", "war", "Crisis social y política en un año de fuerte inestabilidad."],
+      ["1921-07-22", "Desastre de Annual", "war", "Derrota grave en Marruecos; crisis del sistema político."],
+      ["1923-09-13", "Golpe de Primo de Rivera", "coup", "Inicio de la dictadura militar (1923–1930)."],
+      ["1927-12-01", "Generación del 27", "culture", "Esplendor cultural: poesía y vanguardia en la Edad de Plata."],
+      ["1931-04-14", "II República", "politics", "Proclamación de la República: nueva etapa política y reformas."],
+      ["1931-12-09", "Constitución de 1931", "politics", "Estado laico, derechos sociales y ampliación de libertades."],
+      ["1933-11-19", "Voto femenino en elecciones generales", "politics", "Sufragio universal efectivo en España."],
+      ["1934-10-05", "Revolución de Asturias", "war", "Insurrección minera y conflicto social; dura represión."],
+      ["1936-02-16", "Victoria del Frente Popular", "politics", "Gana la coalición de izquierdas; clima político polarizado."],
+
+      /* ✅ FIX: este evento ya NO va centrado, va a un lado (derecha) */
+      ["1936-07-18", "Golpe de Estado", "coup", "Se inicia la Guerra Civil.", "right"],
+
+      ["1936-11-07", "Defensa de Madrid", "war", "Resistencia y propaganda: “No pasarán”.", "left"],
+      ["1937-04-26", "Bombardeo de Guernica", "war", "Ataque aéreo con enorme repercusión internacional.", "left"],
+      ["1937-10-01", "Franco, Jefe del Estado", "politics", "Consolidación del mando en el bando sublevado.", "right"],
+      ["1938-07-25", "Batalla del Ebro", "war", "La batalla más sangrienta; punto de inflexión.", "left"],
+      ["1939-04-01", "Fin de la Guerra Civil", "war", "Victoria del bando nacional; inicio de la dictadura.", "right"],
+
+      ["1940-10-23", "Entrevista de Hendaya", "politics", "Reunión entre Franco y Hitler; España no entra formalmente en la II GM."],
+      ["1953-09-26", "Pactos de Madrid", "politics", "Acuerdos con EE. UU.: bases militares e integración estratégica."],
+      ["1959-07-21", "Plan de Estabilización", "politics", "Fin de la autarquía y modernización económica."],
+      ["1968-05-01", "Clima de protestas estudiantiles", "culture", "Movilización universitaria y apertura cultural (contexto europeo)."],
+      ["1969-07-22", "Juan Carlos, sucesor a título de Rey", "politics", "Designación clave para la futura transición."],
+      ["1973-12-20", "Asesinato de Carrero Blanco", "coup", "Atentado de ETA; impacto en la continuidad del régimen."],
+      ["1975-11-20", "Muerte de Franco", "politics", "Fin de la dictadura; se abre el proceso de transición."],
+      ["1977-06-15", "Elecciones democráticas", "politics", "Primeras elecciones libres desde la II República."],
+      ["1978-12-06", "Constitución de 1978", "politics", "Aprobada en referéndum; Estado social y democrático de derecho."],
+      ["1981-02-23", "23-F", "coup", "Intento de golpe de Estado; fracaso tras intervención institucional."],
+      ["1982-10-28", "Victoria del PSOE", "politics", "Felipe González presidente; consolidación democrática."],
+      ["1986-01-01", "Entrada en la CEE", "politics", "Integración europea: cambio económico y político de gran alcance."],
+      ["1992-07-25", "Barcelona 92", "culture", "Juegos Olímpicos; proyección internacional y modernización urbana."],
+      ["1996-03-03", "Victoria del PP", "politics", "Aznar presidente; alternancia política en democracia."],
+
+      /* Extras (reales o muy generales, sin eliminar los existentes) */
+      ["1904-07-01", "Reformas y tensión social (comienzos de siglo)", "politics", "Crecen debates sobre reformas, regionalismos y conflictividad laboral.", null, { dateFmt: "year" }],
+      ["1906-05-31", "Atentado durante la boda real", "coup", "Atentado contra Alfonso XIII; evidencia de radicalización y violencia política."],
+      ["1914-07-01", "Neutralidad en la I Guerra Mundial", "politics", "Impacto económico y social: cambios en producción, precios y conflictos internos.", null, { dateFmt: "year" }],
+      ["1918-07-01", "Crisis social y sanitaria", "war", "Años de huelgas, carestía y crisis; el país vive gran tensión.", null, { dateFmt: "year" }],
+      ["1929-07-01", "Grandes exposiciones (Sevilla / Barcelona)", "culture", "Auge simbólico y urbano; modernización y propaganda cultural.", null, { dateFmt: "year" }],
+      ["1932-08-10", "Intento de golpe (Sanjurjada)", "coup", "Intentona contra la II República; aumenta la polarización política."],
+      ["1947-07-01", "Ley de Sucesión (referéndum)", "politics", "El régimen define el marco de la Jefatura del Estado y la sucesión.", null, { dateFmt: "year" }],
+      ["1955-07-01", "Apertura internacional", "politics", "Etapa de mayor integración exterior y diplomática.", null, { dateFmt: "year" }],
+      ["1966-07-01", "Reformas del régimen (años 60)", "politics", "Cambios legales y control de prensa; tecnocracia y desarrollo.", null, { dateFmt: "year" }],
+      ["1976-12-01", "Reforma política", "politics", "Impulso decisivo hacia el sistema democrático y nuevas elecciones."],
+      ["1986-03-12", "Referéndum OTAN", "politics", "Consulta sobre permanencia en la OTAN; debate social y político."],
+      ["1999-01-01", "Euro (inicio como moneda contable)", "politics", "Transición hacia el euro en operaciones financieras (antes de billetes/monedas)."],
+      ["2000-03-12", "Elecciones generales (mayoría absoluta)", "politics", "Nuevo ciclo político al final del siglo (y comienzo del XXI).", null, { dateFmt: "year" }],
+    ];
+
+    // === Requisito: al menos 1 evento por año (1900–2000) ===
+    // Se añaden marcadores "Contexto YYYY" para los años sin evento.
+    // (No elimina los existentes; solo añade.)
+    function ensureOneEventPerYear(){
+      const present = new Set();
+      for (const ev of events){
+        if (!ev || !ev[0]) continue;
+        present.add(String(ev[0]).slice(0,4));
+      }
+
+      for (let y = CONFIG.startYear; y <= CONFIG.endYear; y++){
+        const ys = String(y);
+        if (present.has(ys)) continue;
+
+        const date = `${ys}-07-02`;
+        const title = `Contexto ${ys}`;
+        const desc =
+          "Marcador anual para garantizar 1 evento/año. Sustitúyelo por un hito concreto (político, cultural, social o económico) si lo necesitas.";
+        events.push([date, title, "context", desc, null, { auto: true, dateFmt: "year" }]);
+      }
+
+      // Mantener todo en orden cronológico
+      events.sort((a,b) => String(a[0]).localeCompare(String(b[0])));
+    }
+    ensureOneEventPerYear();
+
+    const state = {
+      types: new Set(["politics","war","culture","coup","context"]),
+      query: "",
+      compact: true,
+    };
+
+    function buildMapper(pxPerYear){
+      const start = parseDateUTC(`${CONFIG.startYear}-01-01`);
+      const end = parseDateUTC(`${CONFIG.endYear}-12-31`);
+      const totalMs = (end - start);
+      const totalH = (CONFIG.endYear - CONFIG.startYear) * pxPerYear;
+
+      function yFromDate(dateStr){
+        const d = parseDateUTC(dateStr);
+        const t = Math.max(0, Math.min(1, (d - start) / totalMs));
+        return (t * totalH) + CONFIG.startOffset;
+      }
+
+      function dateFromY(y){
+        const t = Math.max(0, Math.min(1, (y - CONFIG.startOffset) / totalH));
+        const ms = start.getTime() + t * totalMs;
+        return new Date(ms);
+      }
+
+      return { yFromDate, dateFromY, totalH };
+    }
+
+    const wrapper = document.getElementById("timeline-wrapper");
+    const stickyYearEl = document.getElementById("stickyYear");
+    const stickyDecadeEl = document.getElementById("stickyDecade");
+    const stickyEraEl = document.getElementById("stickyEra");
+    const stickyEraDot = document.getElementById("stickyEraDot");
+    const progressBar = document.getElementById("progressBar");
+
+    const statsCount = document.getElementById("statsCount");
+    const statsTotal = document.getElementById("statsTotal");
+
+    let mapper = null;
+    let eventObjs = [];
+    let svg = null;
+
+    function clearTimeline(){
+      wrapper.innerHTML = "";
+      eventObjs = [];
+      svg = null;
+    }
+
+    function initTimeline(){
+      clearTimeline();
+
+      const pxPerYear = state.compact ? CONFIG.pxPerYearCompact : CONFIG.pxPerYearRelaxed;
+      mapper = buildMapper(pxPerYear);
+
+      wrapper.style.height = `${mapper.totalH + CONFIG.startOffset + CONFIG.paddingBottom}px`;
+      wrapper.style.position = "relative";
+
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("connectors");
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("height", "100%");
+      svg.setAttribute("preserveAspectRatio", "none");
+      wrapper.appendChild(svg);
+
+      const intro = document.createElement("div");
+      intro.className = "axis intro";
+      intro.style.top = "0px";
+      intro.style.height = `${mapper.yFromDate(`${CONFIG.startYear}-01-01`)}px`;
+      wrapper.appendChild(intro);
+
+      for (const p of periods){
+        const y1 = mapper.yFromDate(p.start);
+        const y2 = mapper.yFromDate(p.end);
+        const h = Math.max(2, y2 - y1);
+
+        if (p.type === "split"){
+          const l = document.createElement("div");
+          l.className = "axis split-left";
+          l.style.top = `${y1}px`; l.style.height = `${h}px`;
+          wrapper.appendChild(l);
+
+          const r = document.createElement("div");
+          r.className = "axis split-right";
+          r.style.top = `${y1}px`; r.style.height = `${h}px`;
+          wrapper.appendChild(r);
+        } else {
+          const seg = document.createElement("div");
+          seg.className = "axis";
+          seg.style.top = `${y1}px`; seg.style.height = `${h}px`;
+          seg.style.background = p.color;
+          wrapper.appendChild(seg);
+        }
+      }
+
+      for (let y = CONFIG.startYear; y <= CONFIG.endYear; y += 10){
+        const top = mapper.yFromDate(`${y}-01-01`);
+
+        const decade = document.createElement("div");
+        decade.className = "decade";
+        decade.style.top = `${top}px`;
+
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = `${y}–${y+9}`;
+        decade.appendChild(label);
+        wrapper.appendChild(decade);
+
+        const ybg = document.createElement("div");
+        ybg.className = "year-bg";
+        ybg.textContent = y;
+        ybg.style.top = `${top}px`;
+        wrapper.appendChild(ybg);
+      }
+
+      let sideIdx = 0;
+      for (const ev of events){
+        const date = ev[0];
+        const title = ev[1];
+        const type = ev[2];
+        const desc = ev[3];
+
+        const forcedSide = (typeof ev[4] === "string") ? ev[4] : null;
+        const last = ev[ev.length - 1];
+        const opt = (last && typeof last === "object" && !Array.isArray(last)) ? last : null;
+
+        const y = mapper.yFromDate(date);
+        const isSplit = (date >= "1936-07-18" && date <= "1939-04-01");
+
+        let side = "left";
+        if (isSplit && forcedSide){
+          side = forcedSide;
+        } else if (!isSplit){
+          side = (sideIdx % 2 === 0) ? "left" : "right";
+          sideIdx++;
+        } else {
+          side = (sideIdx % 2 === 0) ? "left" : "right";
+          sideIdx++;
+        }
+
+        const node = document.createElement("div");
+        node.className = `node type-${type}`;
+        node.style.top = `${y}px`;
+        if (side === "center") node.classList.add("center");
+        else if (side === "left") node.classList.add(isSplit ? "split-l" : "center");
+        else node.classList.add(isSplit ? "split-r" : "center");
+        wrapper.appendChild(node);
+
+        const card = document.createElement("article");
+        card.className = `card ${side === "center" ? "center" : side}`;
+        card.setAttribute("data-type", type);
+        card.setAttribute("data-date", date);
+        card.setAttribute("data-title", title);
+        if (opt && opt.auto) card.setAttribute("data-auto", "1");
+
+        const accent = TYPE_META[type]?.color || "rgba(255,255,255,0.25)";
+        const dObj = parseDateUTC(date);
+
+        const dateFmt = opt?.dateFmt || "monthYear";
+        let dateStr = "";
+        if (dateFmt === "year"){
+          dateStr = String(dObj.getUTCFullYear());
+        } else if (dateFmt === "yearMonth"){
+          dateStr = dObj.toLocaleDateString("es-ES", { year: "numeric", month: "long" });
+        } else {
+          dateStr = dObj.toLocaleDateString("es-ES", { year: "numeric", month: "long" });
+        }
+
+        const pillLabel = TYPE_META[type]?.label ?? "Evento";
+        const autoPill = (opt && opt.auto)
+          ? `<span class="pill subtle" title="Marcador anual automático"><span class="dot" style="background:${hexToRgba(accent,0.9)}"></span><span>AUTO</span></span>`
+          : "";
+
+        card.innerHTML = `
+          <div class="meta">
+            <span>${escapeHTML(dateStr)}</span>
+            <span class="pill" aria-label="Tipo de evento">
+              <span class="dot" style="background:${accent}"></span>
+              <span>${escapeHTML(pillLabel)}</span>
+            </span>
+            ${autoPill}
+          </div>
+          <h3>${escapeHTML(title)}</h3>
+          <p>${escapeHTML(desc)}</p>
+        `;
+
+        card.dataset.nodeY = String(y);
+        wrapper.appendChild(card);
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.classList.add("conn-path");
+        svg.appendChild(path);
+
+        const baseShadow = getComputedStyle(card).boxShadow || "";
+        if (side === "left"){
+          card.style.boxShadow = `${baseShadow}, inset -4px 0 0 ${hexToRgba(accent,0.9)}`;
+        } else if (side === "right"){
+          card.style.boxShadow = `${baseShadow}, inset 4px 0 0 ${hexToRgba(accent,0.9)}`;
+        } else {
+          card.style.boxShadow = `${baseShadow}, inset 0 0 0 1px rgba(255,255,255,0.08)`;
+        }
+
+        eventObjs.push({ date, title, type, desc, side, isSplit, node, card, path, y, opt });
+      }
+
+      setupYearObservers();
+      setupCardObserver();
+      applyFiltersAndLayout();
+      setupStickyYear();
+      updateStats();
+      updateProgress();
+    }
+
+    function escapeHTML(str){
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    function applyFiltersAndLayout(){
+      const q = state.query.trim().toLowerCase();
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+      for (const e of eventObjs){
+        const matchType = state.types.has(e.type);
+        const matchText = !q || (e.title.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q));
+        const show = matchType && matchText;
+
+        e.card.classList.toggle("is-hidden", !show);
+        e.node.classList.toggle("is-hidden", !show);
+
+        const hideConn = isMobile || !show || e.side === "center";
+        e.path.style.display = hideConn ? "none" : "";
+      }
+
+      layoutCards(isMobile);
+      if (!isMobile) drawConnectors();
+      updateStats();
+    }
+
+    function updateStats(){
+      const total = eventObjs.length;
+      const visible = eventObjs.filter(e => !e.card.classList.contains("is-hidden")).length;
+      statsTotal.textContent = String(total);
+      statsCount.textContent = String(visible);
+    }
+
+    /* Desktop: global greedy placement with REAL horizontal overlap detection */
+    function layoutCards(isMobile){
+      const gap = isMobile ? CONFIG.minGapMobile : CONFIG.minGapDesktop;
+
+      const visible = eventObjs.filter(e => !e.card.classList.contains("is-hidden"));
+      if (!visible.length) return;
+
+      if (isMobile){
+        const measured = visible.map(e => {
+          const h = e.card.offsetHeight || 140;
+          const nodeY = Number(e.card.dataset.nodeY);
+          const desiredTop = nodeY - (h / 2);
+          return { e, h, desiredTop, top: desiredTop };
+        }).sort((a,b) => a.desiredTop - b.desiredTop);
+
+        for (let i = 1; i < measured.length; i++){
+          const prev = measured[i-1];
+          const cur = measured[i];
+          const minTop = prev.top + prev.h + gap;
+          if (cur.top < minTop) cur.top = minTop;
+        }
+        for (const m of measured){
+          m.e.card.style.top = `${m.top}px`;
+        }
+        return;
+      }
+
+      const pre = visible.map(e => {
+        const h = e.card.offsetHeight || 140;
+        const nodeY = Number(e.card.dataset.nodeY);
+        const desiredTop = nodeY - (h / 2);
+        e.card.style.top = `${desiredTop}px`;
+        return { e, h, desiredTop, top: desiredTop, x0: 0, x1: 0 };
+      });
+
+      void wrapper.offsetHeight;
+
+      const wrapRect = wrapper.getBoundingClientRect();
+      for (const it of pre){
+        const r = it.e.card.getBoundingClientRect();
+        it.x0 = r.left - wrapRect.left;
+        it.x1 = r.right - wrapRect.left;
+      }
+
+      pre.sort((a,b) => a.desiredTop - b.desiredTop);
+
+      const placed = [];
+      const eps = 1.5;
+
+      for (const cur of pre){
+        let top = cur.desiredTop;
+
+        for (let iter = 0; iter < 60; iter++){
+          let newTop = top;
+          for (const p of placed){
+            if (!rangesOverlapX(cur.x0, cur.x1, p.x0, p.x1, eps)) continue;
+
+            const pTop = p.top, pBot = p.top + p.h;
+            const cTop = newTop, cBot = newTop + cur.h;
+
+            if (cTop < pBot + gap && cBot > pTop - gap){
+              newTop = Math.max(newTop, pBot + gap);
+            }
+          }
+          if (newTop === top) break;
+          top = newTop;
+        }
+
+        cur.top = top;
+        cur.e.card.style.top = `${top}px`;
+        placed.push(cur);
+      }
+    }
+
+    function rangesOverlapX(a0, a1, b0, b1, eps){
+      return (a0 < (b1 - eps)) && (a1 > (b0 + eps));
+    }
+
+    function drawConnectors(){
+      const wrapRect = wrapper.getBoundingClientRect();
+      const axisX = wrapRect.width * 0.5;
+      const splitGap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--split-gap")) || 42;
+
+      for (const e of eventObjs){
+        if (e.path.style.display === "none") continue;
+
+        const nodeRect = e.node.getBoundingClientRect();
+        const cardRect = e.card.getBoundingClientRect();
+
+        const nodeY = (nodeRect.top - wrapRect.top) + (nodeRect.height / 2);
+        let nodeX = axisX;
+        if (e.isSplit && e.side === "left") nodeX = axisX - splitGap;
+        if (e.isSplit && e.side === "right") nodeX = axisX + splitGap;
+        if (e.side === "center") { e.path.style.display = "none"; continue; }
+
+        const cardY = clamp(nodeY, (cardRect.top - wrapRect.top) + 16, (cardRect.bottom - wrapRect.top) - 16);
+        const cardX = (e.side === "left")
+          ? (cardRect.right - wrapRect.left)
+          : (cardRect.left - wrapRect.left);
+
+        const dx = cardX - nodeX;
+        const cx1 = nodeX + dx * 0.40;
+        const cy1 = nodeY + (cardY - nodeY) * 0.10;
+
+        const d = `M ${nodeX.toFixed(2)} ${nodeY.toFixed(2)} Q ${cx1.toFixed(2)} ${cy1.toFixed(2)} ${cardX.toFixed(2)} ${cardY.toFixed(2)}`;
+        e.path.setAttribute("d", d);
+
+        const tint = TYPE_META[e.type]?.color || "rgba(255,255,255,0.22)";
+        e.path.style.stroke = hexToRgba(tint, 0.28);
+      }
+    }
+
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+    function hexToRgba(color, alpha){
+      if (!color) return `rgba(255,255,255,${alpha})`;
+      if (color.startsWith("rgb")) {
+        return color.replace(/rgba?\(([^)]+)\)/, (m, inner) => {
+          const parts = inner.split(",").map(s => s.trim());
+          const r = parts[0], g = parts[1], b = parts[2];
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        });
+      }
+      const hex = color.replace("#","").trim();
+      if (hex.length === 3){
+        const r = parseInt(hex[0]+hex[0],16);
+        const g = parseInt(hex[1]+hex[1],16);
+        const b = parseInt(hex[2]+hex[2],16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+      if (hex.length === 6){
+        const r = parseInt(hex.slice(0,2),16);
+        const g = parseInt(hex.slice(2,4),16);
+        const b = parseInt(hex.slice(4,6),16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+      return `rgba(255,255,255,${alpha})`;
+    }
+
+    let cardObserver = null;
+    function setupCardObserver(){
+      if (cardObserver) cardObserver.disconnect();
+      cardObserver = new IntersectionObserver((entries) => {
+        for (const ent of entries){
+          if (ent.isIntersecting) ent.target.classList.add("visible");
+        }
+      }, { threshold: 0.08, rootMargin: "-12% 0px -18% 0px" });
+
+      for (const e of eventObjs){
+        cardObserver.observe(e.card);
+      }
+    }
+
+    function setupYearObservers(){
+      const yobs = new IntersectionObserver((entries) => {
+        for (const ent of entries){
+          ent.target.classList.toggle("active", ent.isIntersecting);
+        }
+      }, { threshold: 0.55, rootMargin: "-35% 0px -35% 0px" });
+
+      wrapper.querySelectorAll(".year-bg").forEach(el => yobs.observe(el));
+    }
+
+    function getEraInfo(dateObj){
+      const iso = dateObj.toISOString().slice(0,10);
+      for (const p of periods){
+        if (iso >= p.start && iso < p.end){
+          return { label: p.label || "", color: p.color || "rgba(255,255,255,0.25)" };
+        }
+      }
+      return { label: "", color: "rgba(255,255,255,0.25)" };
+    }
+
+    let rafScroll = 0;
+    function setupStickyYear(){
+      const onScroll = () => {
+        if (rafScroll) return;
+        rafScroll = requestAnimationFrame(() => {
+          rafScroll = 0;
+          const wrapTop = wrapper.getBoundingClientRect().top + window.scrollY;
+          const y = (window.scrollY - wrapTop) + 140;
+          const d = mapper.dateFromY(y);
+          const year = d.getUTCFullYear();
+          const decade = Math.floor(year / 10) * 10;
+
+          stickyYearEl.textContent = String(year);
+          stickyDecadeEl.textContent = `${decade}–${decade+9}`;
+
+          const era = getEraInfo(d);
+          stickyEraEl.textContent = era.label || "—";
+          stickyEraDot.style.background = era.color || "rgba(255,255,255,0.25)";
+
+          updateProgress();
+        });
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }
+
+    function updateProgress(){
+      const docH = document.documentElement.scrollHeight;
+      const winH = window.innerHeight;
+      const max = Math.max(1, docH - winH);
+      const p = clamp(window.scrollY / max, 0, 1);
+      progressBar.style.height = `${(p * 100).toFixed(2)}%`;
+    }
+
+    const searchEl = document.getElementById("search");
+    const compactBtn = document.getElementById("chip-compact");
+    const resetBtn = document.getElementById("btn-reset");
+    const jumpYearEl = document.getElementById("jumpYear");
+
+    const typeBtns = [
+      document.getElementById("chip-politics"),
+      document.getElementById("chip-war"),
+      document.getElementById("chip-culture"),
+      document.getElementById("chip-coup"),
+      document.getElementById("chip-context"),
+    ];
+
+    searchEl.addEventListener("input", () => {
+      state.query = searchEl.value || "";
+      applyFiltersAndLayout();
+    });
+
+    for (const btn of typeBtns){
+      btn.addEventListener("click", () => {
+        const t = btn.dataset.type;
+        const isOn = state.types.has(t);
+        if (isOn) state.types.delete(t);
+        else state.types.add(t);
+        btn.setAttribute("aria-pressed", String(!isOn));
+        applyFiltersAndLayout();
+      });
+    }
+
+    compactBtn.addEventListener("click", () => {
+      state.compact = !state.compact;
+      compactBtn.setAttribute("aria-pressed", String(state.compact));
+      initTimeline();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      state.query = "";
+      searchEl.value = "";
+      state.types = new Set(["politics","war","culture","coup","context"]);
+      for (const b of typeBtns) b.setAttribute("aria-pressed", "true");
+      applyFiltersAndLayout();
+    });
+
+    function scrollToYear(year){
+      const y = Math.max(CONFIG.startYear, Math.min(CONFIG.endYear, year));
+      const posY = mapper.yFromDate(`${y}-07-02`);
+      const wrapTop = wrapper.getBoundingClientRect().top + window.scrollY;
+      const target = wrapTop + posY - 120;
+      window.scrollTo({ top: target, behavior: "smooth" });
+    }
+
+    function parseYearInput(val){
+      const n = parseInt(String(val).replace(/[^\d]/g,"").slice(0,4), 10);
+      if (!Number.isFinite(n)) return null;
+      return n;
+    }
+
+    jumpYearEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        const n = parseYearInput(jumpYearEl.value);
+        if (n !== null) scrollToYear(n);
+      }
+    });
+    jumpYearEl.addEventListener("blur", () => {
+      const n = parseYearInput(jumpYearEl.value);
+      if (n !== null) scrollToYear(n);
+    });
+
+    let resizeRaf = 0;
+    window.addEventListener("resize", () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        applyFiltersAndLayout();
+        updateProgress();
+      });
+    }, { passive: true });
+
+    compactBtn.setAttribute("aria-pressed", "true");
+    for (const b of typeBtns) b.setAttribute("aria-pressed", "true");
+
+    initTimeline();
+  </script>
+</body>
+</html>
